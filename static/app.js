@@ -3430,7 +3430,7 @@ function initializeEventListeners() {
 // ============================================
 // INITIALIZATION ON PAGE LOAD
 // ============================================
-function startAcqua OSApp() {
+function startAcquaOsApp() {
   if (window.__acquaOsAppStarted) return;
   window.__acquaOsAppStarted = true;
   // Set CSS variables
@@ -4168,7 +4168,7 @@ function startAcqua OSApp() {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', startAcqua OSApp, { once: true });
+  document.addEventListener('DOMContentLoaded', startAcquaOsApp, { once: true });
 } else {
-  startAcqua OSApp();
+  startAcquaOsApp();
 }
