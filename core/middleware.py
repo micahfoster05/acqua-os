@@ -106,7 +106,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "frame-ancestors 'self'"
             )
         else:
-            response.headers["X-Frame-Options"] = "DENY"
+            # Allow Capital Kings admin portal to embed Acqua OS in an iframe.
+            # Still locked down everywhere else.
+            allowed_frame_ancestors = (
+                "'self' "
+                "https://capitalkings.co "
+                "https://*.capitalkings.co "
+                "http://localhost:* "
+                "http://127.0.0.1:*"
+            )
+            response.headers["X-Frame-Options"] = "SAMEORIGIN"
             # NOTE: `style-src 'unsafe-inline'` is intentionally retained.
             # `static/index.html` and `static/login.html` ship inline <style>
             # blocks, and several JS modules build runtime `style=""` attrs.
@@ -122,6 +131,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "media-src 'self' blob:; "
                 "connect-src 'self'; "
                 "frame-src 'self'; "
-                "frame-ancestors 'none'"
+                f"frame-ancestors {allowed_frame_ancestors}"
             )
         return response
