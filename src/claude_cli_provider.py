@@ -28,21 +28,40 @@ logger = logging.getLogger(__name__)
 
 # ---- Constants ---------------------------------------------------------------
 
-# The endpoint URL that triggers this provider in Odysseus endpoint config.
+# The endpoint URL that triggers this provider in Acqua OS endpoint config.
+# You can append ?effort=<level> to set a default thinking level, e.g.:
+#   claude-cli://local?effort=high
 CLAUDE_CLI_URL = "claude-cli://local"
 
-# Model list served to the UI when this endpoint is selected.
+# Current Claude model lineup (updated June 2026).
+# Aliases (sonnet / opus / haiku) always resolve to the latest release.
+# Full slugs let you pin to a specific version.
 CLAUDE_CLI_MODELS: List[str] = [
+    # ── Latest (recommended) ──────────────────────────────────────────────
+    "claude-sonnet-4-6",          # balanced — best everyday choice
+    "claude-opus-4-7",            # most capable — complex reasoning/analysis
+    "claude-haiku-4-5",           # fastest & cheapest — quick tasks
+    # ── Dated versions (pin for reproducibility) ──────────────────────────
+    "claude-haiku-4-5-20251001",
+    # ── Previous generation (stable fallbacks) ────────────────────────────
     "claude-sonnet-4-5",
     "claude-opus-4",
     "claude-haiku-4",
-    "claude-sonnet-4-5-20250929",
-    "claude-opus-4-20250514",
-    "claude-haiku-4-20250514",
 ]
 
+# Valid effort levels for --effort flag (maps to Claude's thinking budget).
+# none = no flag (fastest, no extended thinking)
+# low  = quick think
+# medium = balanced
+# high = thorough
+# xhigh = very deep reasoning
+# max  = maximum — slowest but most careful
+CLAUDE_CLI_EFFORT_LEVELS = ["none", "low", "medium", "high", "xhigh", "max"]
+_DEFAULT_EFFORT: str = os.environ.get("CLAUDE_CLI_EFFORT", "").strip().lower()
+
 # Default CLI timeout (seconds).  Override with CLAUDE_CLI_TIMEOUT env var.
-_CLI_TIMEOUT: int = int(os.environ.get("CLAUDE_CLI_TIMEOUT", "120"))
+# Longer timeouts matter more at high effort levels.
+_CLI_TIMEOUT: int = int(os.environ.get("CLAUDE_CLI_TIMEOUT", "180"))
 
 # ---- Helpers -----------------------------------------------------------------
 
@@ -61,6 +80,27 @@ def _guardrail() -> None:
         )
         logger.error(msg)
         raise RuntimeError(msg)
+
+
+def effort_from_url(url: str) -> str:
+    """Extract ?effort= query param from a claude-cli:// URL.
+
+    Returns the effort string (e.g. 'high') or the process-level default.
+    Falls back to '' (no flag) if nothing is set.
+
+    Examples:
+        effort_from_url('claude-cli://local?effort=high')  -> 'high'
+        effort_from_url('http://claude-cli://local')       -> _DEFAULT_EFFORT
+    """
+    try:
+        from urllib.parse import urlparse, parse_qs
+        qs = parse_qs(urlparse(url).query)
+        lvl = qs.get("effort", [""])[0].strip().lower()
+        if lvl in CLAUDE_CLI_EFFORT_LEVELS:
+            return lvl
+    except Exception:
+        pass
+    return _DEFAULT_EFFORT
 
 
 def _extract_system_and_user(messages: List[Dict]) -> "tuple[str, str]":
@@ -91,12 +131,19 @@ def _extract_system_and_user(messages: List[Dict]) -> "tuple[str, str]":
 
 # ---- Sync call ---------------------------------------------------------------
 
-def call_claude_cli(messages: List[Dict], model: str = "claude-sonnet-4-5") -> str:
+def call_claude_cli(
+    messages: List[Dict],
+    model: str = "claude-sonnet-4-6",
+    effort: str = "",
+) -> str:
     """Synchronous Claude CLI call.  Blocks until the response is complete.
 
     Args:
         messages: OpenAI-style message list (system / user / assistant roles).
-        model:    Claude model slug, e.g. ``"claude-sonnet-4-5"``.
+        model:    Claude model slug, e.g. ``"claude-sonnet-4-6"``.
+        effort:   Thinking level — one of: none / low / medium / high / xhigh / max.
+                  Empty string or 'none' → no flag (standard mode).
+                  Defaults to the CLAUDE_CLI_EFFORT env var.
 
     Returns:
         The assistant's response text.
@@ -109,11 +156,18 @@ def call_claude_cli(messages: List[Dict], model: str = "claude-sonnet-4-5") -> s
     if not user_message:
         raise ValueError("No user message found in messages list")
 
+    # Resolve effort: explicit arg → process default → no flag
+    resolved_effort = (effort or _DEFAULT_EFFORT or "").strip().lower()
+    if resolved_effort == "none":
+        resolved_effort = ""
+
     args = ["claude", "--print", "--model", model, "--output-format", "json"]
+    if resolved_effort and resolved_effort in CLAUDE_CLI_EFFORT_LEVELS:
+        args += ["--effort", resolved_effort]
     if system_prompt:
         args += ["--append-system-prompt", system_prompt]
 
-    logger.debug("claude-cli [sync]: %s", " ".join(args[:4]))
+    logger.debug("claude-cli [sync]: %s effort=%s", " ".join(args[:4]), resolved_effort or "default")
     try:
         result = subprocess.run(
             args,
@@ -157,7 +211,9 @@ def call_claude_cli(messages: List[Dict], model: str = "claude-sonnet-4-5") -> s
 # ---- Async call --------------------------------------------------------------
 
 async def call_claude_cli_async(
-    messages: List[Dict], model: str = "claude-sonnet-4-5"
+    messages: List[Dict],
+    model: str = "claude-sonnet-4-6",
+    effort: str = "",
 ) -> str:
     """Async Claude CLI call.
 
@@ -169,31 +225,39 @@ async def call_claude_cli_async(
     Args:
         messages: OpenAI-style message list.
         model:    Claude model slug.
+        effort:   Thinking level (none/low/medium/high/xhigh/max).
 
     Returns:
         The assistant's response text.
     """
+    import functools
     # asyncio.to_thread requires Python 3.9+; fall back to run_in_executor
     try:
-        return await asyncio.to_thread(call_claude_cli, messages, model=model)
+        return await asyncio.to_thread(call_claude_cli, messages, model=model, effort=effort)
     except AttributeError:
         loop = asyncio.get_event_loop()
-        import functools
         return await loop.run_in_executor(
-            None, functools.partial(call_claude_cli, messages, model=model)
+            None, functools.partial(call_claude_cli, messages, model=model, effort=effort)
         )
 
 
 # ---- Streaming (pseudo-stream) -----------------------------------------------
 
 async def stream_claude_cli(
-    messages: List[Dict], model: str = "claude-sonnet-4-5"
+    messages: List[Dict],
+    model: str = "claude-sonnet-4-6",
+    effort: str = "",
 ) -> AsyncIterator[str]:
-    """Yield Odysseus-compatible SSE chunks from a Claude CLI response.
+    """Yield Acqua OS-compatible SSE chunks from a Claude CLI response.
 
     The CLI does not stream natively -- we run the full call and emit the
     result paragraph-by-paragraph so the UI renders progressively rather than
     waiting for one giant chunk.
+
+    Args:
+        messages: OpenAI-style message list.
+        model:    Claude model slug.
+        effort:   Thinking level (none/low/medium/high/xhigh/max).
 
     Yields:
         SSE strings: ``data: {"delta": "..."}\\n\\n`` or
@@ -201,7 +265,7 @@ async def stream_claude_cli(
         ``data: [DONE]\\n\\n``.
     """
     try:
-        text = await call_claude_cli_async(messages, model=model)
+        text = await call_claude_cli_async(messages, model=model, effort=effort)
     except RuntimeError as exc:
         yield f'event: error\ndata: {json.dumps({"error": str(exc), "status": 502})}\n\n'
         return

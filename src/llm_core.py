@@ -1140,8 +1140,9 @@ def llm_call(url: str, model: str, messages: List[Dict], temperature: float = LL
 
     # ── Acqua OS Claude CLI (subscription quota, no API key) ─────────────────
     if provider == "claude-cli":
+        from src.claude_cli_provider import effort_from_url
         try:
-            response = call_claude_cli(messages_copy, model=model)
+            response = call_claude_cli(messages_copy, model=model, effort=effort_from_url(url))
             _set_cached_response(cache_key, response)
             return response
         except RuntimeError as e:
@@ -1338,8 +1339,9 @@ async def llm_call_async(
 
     # ── Acqua OS Claude CLI (subscription quota, no API key) ─────────────────
     if provider == "claude-cli":
+        from src.claude_cli_provider import effort_from_url
         try:
-            response = await call_claude_cli_async(messages_copy, model=model)
+            response = await call_claude_cli_async(messages_copy, model=model, effort=effort_from_url(url))
             _set_cached_response(cache_key, response)
             return response
         except RuntimeError as e:
@@ -1631,7 +1633,8 @@ async def stream_llm(url: str, model: str, messages: List[Dict], temperature: fl
 
     # ── Acqua OS Claude CLI streaming (pseudo-stream, subscription quota) ──────
     if provider == "claude-cli":
-        async for chunk in stream_claude_cli(messages_copy, model=model):
+        from src.claude_cli_provider import effort_from_url
+        async for chunk in stream_claude_cli(messages_copy, model=model, effort=effort_from_url(url)):
             yield chunk
         return
 
