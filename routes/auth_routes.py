@@ -133,12 +133,17 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
                 raise HTTPException(401, "Invalid 2FA code")
         # All checks passed — create session (password already verified above)
         token = await asyncio.to_thread(auth_manager.create_session_trusted, username)
+        # SameSite=None lets the session cookie work when Acqua OS is embedded
+        # in an iframe on a different origin (e.g. Capital Kings portal on
+        # localhost:3333 embedding localhost:7000).  Browsers allow SameSite=None
+        # without Secure on localhost; on HTTPS we honour SECURE_COOKIES.
+        is_secure = os.getenv("SECURE_COOKIES", "false").lower() == "true"
         cookie_kwargs = dict(
             key=SESSION_COOKIE,
             value=token,
             httponly=True,
-            samesite="lax",
-            secure=os.getenv("SECURE_COOKIES", "false").lower() == "true",
+            samesite="none" if is_secure else "lax",
+            secure=is_secure,
             path="/",
         )
         if body.remember:
