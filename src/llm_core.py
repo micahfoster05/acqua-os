@@ -425,7 +425,8 @@ def _detect_provider(url: str) -> str:
     """
     if _is_ollama_native_url(url):
         return "ollama"
-    if url == CLAUDE_CLI_URL or url.startswith("claude-cli://"):
+    if (url == CLAUDE_CLI_URL or url.startswith("claude-cli://")
+            or "claude-cli" in (url or "").lower()):
         return "claude-cli"
     if _host_match(url, "anthropic.com"):
         return "anthropic"

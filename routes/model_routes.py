@@ -682,6 +682,10 @@ def _probe_endpoint(base_url: str, api_key: str = None, timeout: int = 5) -> Lis
     For Anthropic, queries their /v1/models API, falling back to hardcoded list."""
     from src.endpoint_resolver import resolve_url
     base = resolve_url(_normalize_base(base_url))
+    # Claude CLI is a local subprocess — no HTTP probe needed, return model list directly.
+    if _detect_provider(base) == "claude-cli":
+        from src.claude_cli_provider import CLAUDE_CLI_MODELS
+        return list(CLAUDE_CLI_MODELS)
     if _detect_provider(base) == "chatgpt-subscription":
         from src.chatgpt_subscription import fetch_available_models
         if api_key:
@@ -774,6 +778,9 @@ def _ping_endpoint(base_url: str, api_key: str = None, timeout: float = 1.5) -> 
     """Reachability probe that does not require installed/listed models."""
     from src.endpoint_resolver import resolve_url
     base = resolve_url(_normalize_base(base_url))
+    # Claude CLI is a local subprocess — always reachable if claude is installed.
+    if _detect_provider(base) == "claude-cli":
+        return {"reachable": True, "status_code": 200, "error": None}
     headers = build_headers(api_key, base)
 
     # Ollama exposes /v1/models (OpenAI-compatible) AND native /api/version,
