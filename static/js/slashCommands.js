@@ -5505,7 +5505,7 @@ async function _cmdWisdom(args, ctx) {
 
 async function _cmdUptime(args, ctx) {
   const now = Date.now();
-  const loaded = window._acqua-osLoadTime || now;
+  const loaded = window._acquaOsLoadTime || now;
   const diff = now - loaded;
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);

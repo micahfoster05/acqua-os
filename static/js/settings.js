@@ -1973,7 +1973,7 @@ async function initShortcuts() {
         body: JSON.stringify({ keybinds }),
       });
       // Update global keybinds so they take effect immediately
-      window._acqua-osKeybinds = keybinds;
+      window._acquaOsKeybinds = keybinds;
       if (uiModule && uiModule.showToast) uiModule.showToast('Shortcut saved');
     } catch (e) {
       console.error('Failed to save keybinds:', e);

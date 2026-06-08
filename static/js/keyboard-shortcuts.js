@@ -53,12 +53,12 @@ export function initKeyboardShortcuts(modules) {
     _closeCompareIfActive, _deactivateIncognito, API_BASE
   } = modules;
 
-  window._acqua-osKeybinds = { ..._defaultKeybinds };
+  window._acquaOsKeybinds = { ..._defaultKeybinds };
 
   // Load saved keybinds
   fetch('/api/auth/settings', { credentials: 'same-origin' })
     .then(r => r.json())
-    .then(s => { if (s.keybinds) window._acqua-osKeybinds = { ..._defaultKeybinds, ...s.keybinds }; })
+    .then(s => { if (s.keybinds) window._acquaOsKeybinds = { ..._defaultKeybinds, ...s.keybinds }; })
     .catch(() => {});
 
   // ── Esc cancels select mode (capture phase, before modal-close) ──
@@ -142,7 +142,7 @@ export function initKeyboardShortcuts(modules) {
   };
 
   document.addEventListener('keydown', (e) => {
-    const kb = window._acqua-osKeybinds;
+    const kb = window._acquaOsKeybinds;
 
     if (_matchesCombo(e, kb.search)) {
       e.preventDefault();

@@ -700,7 +700,7 @@ function _libCacheWriteBack() {
 // Expose the active account id to other modules (document.js uses this when sending).
 // Simple global rather than cross-module import to keep coupling minimal.
 function _publishActiveAccount() {
-  try { window.__acqua-osActiveEmailAccount = state._libAccountId || null; } catch (_) {}
+  try { window.__acquaOsActiveEmailAccount = state._libAccountId || null; } catch (_) {}
   // Publish the active account's own address so reply-all can exclude us from
   // the recipient list. This global was read in emailInbox.js but never set.
   try {
