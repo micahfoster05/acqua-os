@@ -424,14 +424,18 @@ const TOOL_NARRATION_RE = /(?:The (?:result|output) shows?:?\s*)?-?\s*(?:stdout|
 // Model pricing table — per million tokens
 // Model info: pricing (per 1M tokens) + context window length
 const MODEL_INFO = {
-  // --- Anthropic ---
-  'claude-sonnet-4-5':    { input: 3.00,  output: 15.00, ctx: 200000 },
-  'claude-sonnet-4-6':    { input: 3.00,  output: 15.00, ctx: 200000 },
-  'claude-sonnet-4':      { input: 3.00,  output: 15.00, ctx: 200000 },
-  'claude-opus-4':        { input: 15.00, output: 75.00, ctx: 200000 },
-  'claude-opus-4-6':      { input: 15.00, output: 75.00, ctx: 200000 },
-  'claude-haiku-4':       { input: 0.80,  output: 4.00,  ctx: 200000 },
-  'claude-haiku-3-5':     { input: 0.80,  output: 4.00,  ctx: 200000 },
+  // --- Anthropic (current generation — June 2026) ---
+  'claude-sonnet-4-6':          { input: 3.00,  output: 15.00, ctx: 200000 },
+  'claude-opus-4-7':            { input: 15.00, output: 75.00, ctx: 200000 },
+  'claude-haiku-4-5':           { input: 0.80,  output: 4.00,  ctx: 200000 },
+  'claude-haiku-4-5-20251001':  { input: 0.80,  output: 4.00,  ctx: 200000 },
+  // --- Anthropic (previous generation — stable) ---
+  'claude-sonnet-4-5':          { input: 3.00,  output: 15.00, ctx: 200000 },
+  'claude-sonnet-4':            { input: 3.00,  output: 15.00, ctx: 200000 },
+  'claude-opus-4':              { input: 15.00, output: 75.00, ctx: 200000 },
+  'claude-opus-4-6':            { input: 15.00, output: 75.00, ctx: 200000 },
+  'claude-haiku-4':             { input: 0.80,  output: 4.00,  ctx: 200000 },
+  'claude-haiku-3-5':           { input: 0.80,  output: 4.00,  ctx: 200000 },
   'claude-3-5-sonnet':    { input: 3.00,  output: 15.00, ctx: 200000 },
   'claude-3-5-haiku':     { input: 0.80,  output: 4.00,  ctx: 200000 },
   'claude-3-opus':        { input: 15.00, output: 75.00, ctx: 200000 },
